@@ -193,19 +193,14 @@ export default function Home() {
         <div
           style={{
             width: '100%',
-            maxWidth: '600px',
-            padding: '20px',
             backgroundColor: 'white',
-            fontSize: '10px',
-            lineHeight: '1.5',
             border: '1px solid #ddd',
             boxSizing: 'border-box',
             overflowY: 'auto',
-            maxHeight: '600px',
-            transform: 'scale(0.65)',
-            transformOrigin: 'top left',
-            width: '100%',
-            marginLeft: '-35%',
+            maxHeight: '800px',
+            padding: '20px',
+            fontSize: '11px',
+            lineHeight: '1.5',
           }}
           dangerouslySetInnerHTML={{ __html: previewHTML }}
         />
