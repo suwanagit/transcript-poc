@@ -11,35 +11,28 @@ export default function Home() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Load jsPDF and html2canvas from CDN
-    const loadScripts = async () => {
-      if (typeof window !== 'undefined' && window.jsPDF && window.html2canvas) {
+    // Load html2pdf from CDN
+    const loadScript = () => {
+      if (typeof window !== 'undefined' && window.html2pdf) {
         setIsReady(true);
         return;
       }
 
-      // Load html2canvas first
-      const html2canvasScript = document.createElement('script');
-      html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-      html2canvasScript.async = true;
-
-      // Load jsPDF after html2canvas
-      const jsPDFScript = document.createElement('script');
-      jsPDFScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      jsPDFScript.async = true;
-
-      html2canvasScript.onload = () => {
-        document.head.appendChild(jsPDFScript);
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.async = true;
+      script.onload = () => {
+        // Wait a bit then set ready
+        setTimeout(() => setIsReady(true), 500);
       };
-
-      jsPDFScript.onload = () => {
-        setTimeout(() => setIsReady(true), 200);
+      script.onerror = () => {
+        console.error('Failed to load html2pdf library');
+        alert('Failed to load PDF library. Please refresh the page.');
       };
-
-      document.head.appendChild(html2canvasScript);
+      document.head.appendChild(script);
     };
 
-    loadScripts();
+    loadScript();
   }, []);
 
   const sampleCourses = [
@@ -55,67 +48,39 @@ export default function Home() {
       return;
     }
 
-    if (!isReady || !window.jsPDF || !window.html2canvas) {
-      alert('PDF library is still loading. Please try again in a moment.');
+    if (!isReady || !window.html2pdf) {
+      alert('PDF library is still loading. Please wait a moment and try again.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const element = transcriptRef.current;
-      
-      // Make element visible temporarily for rendering
-      element.style.visibility = 'visible';
-      element.style.position = 'relative';
-      element.style.left = '0';
-      
-      // Get canvas from html2canvas
-      const canvas = await window.html2canvas(element, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-      });
-      
-      // Hide element again
-      element.style.visibility = 'hidden';
-      element.style.position = 'absolute';
-      element.style.left = '-9999px';
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      // Get the element to render
+      const element = transcriptRef.current.cloneNode(true);
       
       // Determine orientation
       const isLandscape = selectedTemplate.includes('landscape');
-      const orientation = isLandscape ? 'landscape' : 'portrait';
       
-      // Create PDF
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({
-        orientation: orientation,
-        unit: 'mm',
-        format: 'a4',
-      });
+      const opt = {
+        margin: 10,
+        filename: `${studentName}-transcript.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          logging: false, 
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          allowTaint: true,
+        },
+        jsPDF: { 
+          orientation: isLandscape ? 'landscape' : 'portrait', 
+          unit: 'mm', 
+          format: 'a4' 
+        },
+      };
       
-      const pageWidth = orientation === 'landscape' ? 297 : 210;
-      const pageHeight = orientation === 'landscape' ? 210 : 297;
-      const imgWidth = pageWidth - 20;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight - 20;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight - 20;
-      }
-
-      pdf.save(`${studentName}-transcript.pdf`);
+      // Generate PDF using html2pdf
+      await window.html2pdf().set(opt).from(element).save();
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
