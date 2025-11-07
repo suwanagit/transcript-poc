@@ -1,34 +1,34 @@
-import DefaultTranscript from './DefaultTranscript';
-import PortraitByYear from './PortraitByYear';
-import PortraitBySubject from './PortraitBySubject';
-import LandscapeByYear from './LandscapeByYear';
-import LandscapeBySubject from './LandscapeBySubject';
+/**
+ * Template Registry
+ * Metadata for all templates - functions are defined in page.js
+ * This allows easy template selection without needing React components
+ */
 
 export const TEMPLATES = {
   default: {
     name: 'Default',
-    description: 'Standard portrait layout',
-    component: DefaultTranscript,
+    description: 'Professional portrait layout',
+    orientation: 'portrait',
   },
   portraitByYear: {
     name: 'Portrait by Year',
-    description: 'Courses grouped by academic year',
-    component: PortraitByYear,
+    description: 'Courses grouped by academic term',
+    orientation: 'portrait',
   },
   portraitBySubject: {
     name: 'Portrait by Subject',
     description: 'Courses grouped by subject',
-    component: PortraitBySubject,
+    orientation: 'portrait',
   },
   landscapeByYear: {
     name: 'Landscape by Year',
-    description: 'Landscape layout grouped by year',
-    component: LandscapeByYear,
+    description: 'Landscape layout grouped by term',
+    orientation: 'landscape',
   },
   landscapeBySubject: {
     name: 'Landscape by Subject',
     description: 'Landscape layout grouped by subject',
-    component: LandscapeBySubject,
+    orientation: 'landscape',
   },
 };
 

@@ -1,6 +1,3 @@
-// INSTRUCTIONS: Replace your existing template functions with the ones below
-// Keep everything else the same
-
 'use client';
 
 import { useState } from 'react';
@@ -18,6 +15,24 @@ export default function Home() {
     { code: 'HIST101', name: 'World History', semester: 'Spring 2023', grade: 'A', credits: 3 },
   ];
 
+  // Get the template HTML string
+  const getTemplateHTML = (templateKey, name, courses) => {
+    switch (templateKey) {
+      case 'default':
+        return createProfessionalPortraitTemplate(name, courses);
+      case 'portraitByYear':
+        return createProfessionalPortraitByYearTemplate(name, courses);
+      case 'portraitBySubject':
+        return createPortraitBySubjectTemplate(name, courses);
+      case 'landscapeByYear':
+        return createProfessionalLandscapeByYearTemplate(name, courses);
+      case 'landscapeBySubject':
+        return createLandscapeBySubjectTemplate(name, courses);
+      default:
+        return createProfessionalPortraitTemplate(name, courses);
+    }
+  };
+
   const generatePDF = async () => {
     if (!studentName.trim()) {
       alert('Please enter a student name');
@@ -27,8 +42,8 @@ export default function Home() {
     setIsLoading(true);
     try {
       const { jsPDF } = await import('jspdf');
-      const html2canvas = await import('html2canvas').then(mod => mod.default);
-      
+      const html2canvas = await import('html2canvas').then((mod) => mod.default);
+
       // Create a temporary container to render the template
       const container = document.createElement('div');
       container.style.position = 'fixed';
@@ -36,58 +51,39 @@ export default function Home() {
       container.style.top = '-9999px';
       container.style.width = '210mm';
       container.style.backgroundColor = 'white';
-      
-      // Get the template component
-      const TemplateComponent = TEMPLATES[selectedTemplate].component;
-      
-      // We need to render React component to DOM - this is tricky
-      // For now, let's use a fallback to hardcoded template logic
-      const isLandscape = selectedTemplate.includes('landscape');
-      
-      // Create HTML content based on template
-      let templateHTML = '';
-      
-      if (selectedTemplate === 'default') {
-        templateHTML = createProfessionalPortraitTemplate(studentName, sampleCourses);
-      } else if (selectedTemplate === 'portraitByYear') {
-        templateHTML = createProfessionalPortraitByYearTemplate(studentName, sampleCourses);
-      } else if (selectedTemplate === 'portraitBySubject') {
-        templateHTML = createPortraitBySubjectTemplate(studentName, sampleCourses);
-      } else if (selectedTemplate === 'landscapeByYear') {
-        templateHTML = createProfessionalLandscapeByYearTemplate(studentName, sampleCourses);
-      } else if (selectedTemplate === 'landscapeBySubject') {
-        templateHTML = createLandscapeBySubjectTemplate(studentName, sampleCourses);
-      }
-      
+
+      // Get the HTML template
+      const templateHTML = getTemplateHTML(selectedTemplate, studentName, sampleCourses);
       container.innerHTML = templateHTML;
       document.body.appendChild(container);
-      
+
       // Give it a moment to render
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Capture the HTML to canvas
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
       });
-      
+
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      
+
       // Determine orientation
+      const isLandscape = selectedTemplate.includes('landscape');
       const orientation = isLandscape ? 'landscape' : 'portrait';
       const pageWidth = isLandscape ? 297 : 210;
       const pageHeight = isLandscape ? 210 : 297;
-      
+
       const doc = new jsPDF({
         orientation: orientation,
         unit: 'mm',
         format: 'a4',
       });
-      
+
       const imgWidth = pageWidth - 20;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
+
       let heightLeft = imgHeight;
       let position = 0;
 
@@ -103,7 +99,6 @@ export default function Home() {
 
       doc.save(`${studentName}-transcript.pdf`);
       document.body.removeChild(container);
-      
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -112,12 +107,17 @@ export default function Home() {
     }
   };
 
-  const TemplateComponent = TEMPLATES[selectedTemplate].component;
+  // Get template HTML for preview
+  const previewHTML = getTemplateHTML(
+    selectedTemplate,
+    studentName || '[Enter name above]',
+    sampleCourses
+  );
 
   return (
     <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', fontFamily: 'system-ui' }}>
       <h1>Academic Transcript Generator</h1>
-      
+
       <div style={{ marginBottom: '30px', padding: '20px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
         <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
           Template:
@@ -179,8 +179,16 @@ export default function Home() {
         {isLoading ? 'Generating PDF...' : 'Download Transcript PDF'}
       </button>
 
-      {/* Live preview of transcript */}
-      <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
+      {/* Live preview of transcript - using dangerouslySetInnerHTML */}
+      <div
+        style={{
+          marginTop: '40px',
+          padding: '20px',
+          backgroundColor: '#f9f9f9',
+          borderRadius: '8px',
+          border: '1px solid #ddd',
+        }}
+      >
         <h3>Preview:</h3>
         <div
           style={{
@@ -188,24 +196,26 @@ export default function Home() {
             maxWidth: '600px',
             padding: '20px',
             backgroundColor: 'white',
-            fontFamily: 'serif',
             fontSize: '10px',
             lineHeight: '1.5',
             border: '1px solid #ddd',
             boxSizing: 'border-box',
             overflowY: 'auto',
             maxHeight: '600px',
+            transform: 'scale(0.65)',
+            transformOrigin: 'top left',
+            width: '100%',
+            marginLeft: '-35%',
           }}
-        >
-          <TemplateComponent studentName={studentName || '[Enter name above]'} sampleCourses={sampleCourses} />
-        </div>
+          dangerouslySetInnerHTML={{ __html: previewHTML }}
+        />
       </div>
     </div>
   );
 }
 
 // ============================================================
-// TEMPLATE FUNCTIONS - REPLACE YOUR EXISTING ONES
+// TEMPLATE FUNCTIONS - Single source of truth for all templates
 // ============================================================
 
 // PROFESSIONAL PORTRAIT (Default)
@@ -458,10 +468,10 @@ function createProfessionalLandscapeByYearTemplate(studentName, courses) {
   `;
 }
 
-// EXISTING FUNCTIONS - Keep these as is (not yet professionally updated)
+// PORTRAIT BY SUBJECT (existing, not yet professionally upgraded)
 function createPortraitBySubjectTemplate(studentName, courses) {
   const coursesBySubject = {};
-  courses.forEach(c => {
+  courses.forEach((c) => {
     const subject = c.code.replace(/\d+/g, '').toUpperCase() || 'Other';
     if (!coursesBySubject[subject]) coursesBySubject[subject] = [];
     coursesBySubject[subject].push(c);
@@ -469,7 +479,9 @@ function createPortraitBySubjectTemplate(studentName, courses) {
 
   let sections = '';
   Object.entries(coursesBySubject).forEach(([subject, subjectCourses]) => {
-    const rows = subjectCourses.map(c => `
+    const rows = subjectCourses
+      .map(
+        (c) => `
       <tr style="border-bottom: 1px solid #ddd;">
         <td style="padding: 8px;">${c.code}</td>
         <td style="padding: 8px;">${c.name}</td>
@@ -477,7 +489,9 @@ function createPortraitBySubjectTemplate(studentName, courses) {
         <td style="text-align: center; padding: 8px; font-weight: bold;">${c.grade}</td>
         <td style="text-align: center; padding: 8px;">${c.credits}</td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
 
     sections += `
       <div style="margin-bottom: 25px;">
@@ -522,9 +536,10 @@ function createPortraitBySubjectTemplate(studentName, courses) {
   `;
 }
 
+// LANDSCAPE BY SUBJECT (existing, not yet professionally upgraded)
 function createLandscapeBySubjectTemplate(studentName, courses) {
   const coursesBySubject = {};
-  courses.forEach(c => {
+  courses.forEach((c) => {
     const subject = c.code.replace(/\d+/g, '').toUpperCase() || 'Other';
     if (!coursesBySubject[subject]) coursesBySubject[subject] = [];
     coursesBySubject[subject].push(c);
@@ -532,7 +547,9 @@ function createLandscapeBySubjectTemplate(studentName, courses) {
 
   let sections = '';
   Object.entries(coursesBySubject).forEach(([subject, subjectCourses]) => {
-    const rows = subjectCourses.map(c => `
+    const rows = subjectCourses
+      .map(
+        (c) => `
       <tr style="border-bottom: 1px solid #ddd;">
         <td style="padding: 6px;">${c.code}</td>
         <td style="padding: 6px;">${c.name}</td>
@@ -540,7 +557,9 @@ function createLandscapeBySubjectTemplate(studentName, courses) {
         <td style="text-align: center; padding: 6px; font-weight: bold;">${c.grade}</td>
         <td style="text-align: center; padding: 6px;">${c.credits}</td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
 
     sections += `
       <div style="margin-bottom: 20px;">
