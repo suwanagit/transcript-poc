@@ -22,7 +22,6 @@ export default function Home() {
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.async = true;
       script.onload = () => {
-        // Wait a bit then set ready
         setTimeout(() => setIsReady(true), 500);
       };
       script.onerror = () => {
@@ -55,32 +54,55 @@ export default function Home() {
 
     setIsLoading(true);
     try {
-      // Get the element to render
-      const element = transcriptRef.current.cloneNode(true);
+      // Use the element directly (it's hidden but in DOM)
+      const element = transcriptRef.current;
+      
+      // Temporarily show it
+      const originalStyle = {
+        visibility: element.style.visibility,
+        position: element.style.position,
+        left: element.style.left,
+      };
+      
+      element.style.visibility = 'visible';
+      element.style.position = 'relative';
+      element.style.left = '0';
+      
+      // Wait for styles to apply
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Determine orientation
       const isLandscape = selectedTemplate.includes('landscape');
       
       const opt = {
-        margin: 10,
+        margin: 5,
         filename: `${studentName}-transcript.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { 
-          scale: 2, 
+          scale: 3, 
           logging: false, 
           useCORS: true,
           backgroundColor: '#ffffff',
           allowTaint: true,
+          windowHeight: element.scrollHeight,
+          windowWidth: element.scrollWidth,
         },
         jsPDF: { 
           orientation: isLandscape ? 'landscape' : 'portrait', 
           unit: 'mm', 
-          format: 'a4' 
+          format: 'a4',
+          compress: true,
         },
       };
       
       // Generate PDF using html2pdf
       await window.html2pdf().set(opt).from(element).save();
+      
+      // Hide it again
+      element.style.visibility = originalStyle.visibility;
+      element.style.position = originalStyle.position;
+      element.style.left = originalStyle.left;
+      
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -164,6 +186,7 @@ export default function Home() {
           visibility: 'hidden', 
           position: 'absolute',
           left: '-9999px',
+          top: '-9999px',
           width: '210mm',
           pointerEvents: 'none',
           backgroundColor: '#ffffff',
