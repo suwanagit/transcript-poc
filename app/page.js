@@ -52,15 +52,33 @@ export default function Home() {
     setIsLoading(true);
     try {
       const element = transcriptRef.current;
+      
+      // Make visible temporarily
+      element.style.opacity = '1';
+      element.style.visibility = 'visible';
+      element.style.position = 'fixed';
+      element.style.top = '0';
+      element.style.left = '0';
+      element.style.zIndex = '-9999';
+      
       const opt = {
         margin: 10,
         filename: `${studentName}-transcript.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true },
         jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
       };
       
       await window.html2pdf().set(opt).from(element).save();
+      
+      // Hide again
+      element.style.opacity = '0';
+      element.style.visibility = 'hidden';
+      element.style.position = 'absolute';
+      element.style.top = 'auto';
+      element.style.left = 'auto';
+      element.style.zIndex = 'auto';
+      
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -111,11 +129,15 @@ export default function Home() {
         {!isReady ? 'Loading PDF library...' : isLoading ? 'Generating PDF...' : 'Download Transcript PDF'}
       </button>
 
-      {/* Hidden transcript template for PDF generation - HARDCODED */}
+      {/* Transcript template - initially hidden with opacity */}
       <div
         ref={transcriptRef}
         style={{
-          display: 'none',
+          opacity: '0',
+          visibility: 'hidden',
+          position: 'absolute',
+          width: '210mm',
+          backgroundColor: 'white',
         }}
       >
         <div
