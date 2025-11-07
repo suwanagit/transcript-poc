@@ -11,26 +11,35 @@ export default function Home() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Load html2pdf from CDN
-    const loadScript = () => {
-      if (typeof window !== 'undefined' && window.html2pdf) {
+    // Load jsPDF and html2canvas from CDN
+    const loadScripts = async () => {
+      if (typeof window !== 'undefined' && window.jsPDF && window.html2canvas) {
         setIsReady(true);
         return;
       }
 
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.async = true;
-      script.onload = () => {
-        setTimeout(() => setIsReady(true), 100);
+      // Load html2canvas first
+      const html2canvasScript = document.createElement('script');
+      html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      html2canvasScript.async = true;
+
+      // Load jsPDF after html2canvas
+      const jsPDFScript = document.createElement('script');
+      jsPDFScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      jsPDFScript.async = true;
+
+      html2canvasScript.onload = () => {
+        document.head.appendChild(jsPDFScript);
       };
-      script.onerror = () => {
-        console.error('Failed to load html2pdf library');
+
+      jsPDFScript.onload = () => {
+        setTimeout(() => setIsReady(true), 200);
       };
-      document.head.appendChild(script);
+
+      document.head.appendChild(html2canvasScript);
     };
 
-    loadScript();
+    loadScripts();
   }, []);
 
   const sampleCourses = [
@@ -46,7 +55,7 @@ export default function Home() {
       return;
     }
 
-    if (!isReady || !window.html2pdf) {
+    if (!isReady || !window.jsPDF || !window.html2canvas) {
       alert('PDF library is still loading. Please try again in a moment.');
       return;
     }
@@ -55,25 +64,58 @@ export default function Home() {
     try {
       const element = transcriptRef.current;
       
-      // Determine orientation based on selected template
+      // Make element visible temporarily for rendering
+      element.style.visibility = 'visible';
+      element.style.position = 'relative';
+      element.style.left = '0';
+      
+      // Get canvas from html2canvas
+      const canvas = await window.html2canvas(element, {
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+      });
+      
+      // Hide element again
+      element.style.visibility = 'hidden';
+      element.style.position = 'absolute';
+      element.style.left = '-9999px';
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      
+      // Determine orientation
       const isLandscape = selectedTemplate.includes('landscape');
       const orientation = isLandscape ? 'landscape' : 'portrait';
       
-      const opt = {
-        margin: 10,
-        filename: `${studentName}-transcript.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          logging: false, 
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          allowTaint: true,
-        },
-        jsPDF: { orientation: orientation, unit: 'mm', format: 'a4' },
-      };
+      // Create PDF
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: orientation,
+        unit: 'mm',
+        format: 'a4',
+      });
       
-      await window.html2pdf().set(opt).from(element).save();
+      const pageWidth = orientation === 'landscape' ? 297 : 210;
+      const pageHeight = orientation === 'landscape' ? 210 : 297;
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight - 20;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight - 20;
+      }
+
+      pdf.save(`${studentName}-transcript.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -150,7 +192,7 @@ export default function Home() {
         {!isReady ? 'Loading PDF library...' : isLoading ? 'Generating PDF...' : 'Download Transcript PDF'}
       </button>
 
-      {/* Transcript template for PDF generation - use visibility hidden instead of display none */}
+      {/* Transcript template for PDF generation */}
       <div 
         ref={transcriptRef} 
         style={{ 
@@ -159,6 +201,7 @@ export default function Home() {
           left: '-9999px',
           width: '210mm',
           pointerEvents: 'none',
+          backgroundColor: '#ffffff',
         }}
       >
         <TemplateComponent studentName={studentName} sampleCourses={sampleCourses} />
