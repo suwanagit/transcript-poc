@@ -22,11 +22,10 @@ export default function Home() {
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.async = true;
       script.onload = () => {
-        setTimeout(() => setIsReady(true), 500);
+        setTimeout(() => setIsReady(true), 100);
       };
       script.onerror = () => {
         console.error('Failed to load html2pdf library');
-        alert('Failed to load PDF library. Please refresh the page.');
       };
       document.head.appendChild(script);
     };
@@ -48,61 +47,22 @@ export default function Home() {
     }
 
     if (!isReady || !window.html2pdf) {
-      alert('PDF library is still loading. Please wait a moment and try again.');
+      alert('PDF library is still loading. Please try again in a moment.');
       return;
     }
 
     setIsLoading(true);
     try {
-      // Use the element directly (it's hidden but in DOM)
       const element = transcriptRef.current;
-      
-      // Temporarily show it
-      const originalStyle = {
-        visibility: element.style.visibility,
-        position: element.style.position,
-        left: element.style.left,
-      };
-      
-      element.style.visibility = 'visible';
-      element.style.position = 'relative';
-      element.style.left = '0';
-      
-      // Wait for styles to apply
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Determine orientation
-      const isLandscape = selectedTemplate.includes('landscape');
-      
       const opt = {
-        margin: 5,
+        margin: 10,
         filename: `${studentName}-transcript.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { 
-          scale: 3, 
-          logging: false, 
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          allowTaint: true,
-          windowHeight: element.scrollHeight,
-          windowWidth: element.scrollWidth,
-        },
-        jsPDF: { 
-          orientation: isLandscape ? 'landscape' : 'portrait', 
-          unit: 'mm', 
-          format: 'a4',
-          compress: true,
-        },
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
       };
       
-      // Generate PDF using html2pdf
       await window.html2pdf().set(opt).from(element).save();
-      
-      // Hide it again
-      element.style.visibility = originalStyle.visibility;
-      element.style.position = originalStyle.position;
-      element.style.left = originalStyle.left;
-      
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -179,17 +139,11 @@ export default function Home() {
         {!isReady ? 'Loading PDF library...' : isLoading ? 'Generating PDF...' : 'Download Transcript PDF'}
       </button>
 
-      {/* Transcript template for PDF generation */}
-      <div 
-        ref={transcriptRef} 
-        style={{ 
-          visibility: 'hidden', 
-          position: 'absolute',
-          left: '-9999px',
-          top: '-9999px',
-          width: '210mm',
-          pointerEvents: 'none',
-          backgroundColor: '#ffffff',
+      {/* Hidden transcript template for PDF generation */}
+      <div
+        ref={transcriptRef}
+        style={{
+          display: 'none',
         }}
       >
         <TemplateComponent studentName={studentName} sampleCourses={sampleCourses} />
@@ -202,18 +156,13 @@ export default function Home() {
           style={{
             width: '100%',
             maxWidth: '600px',
-            padding: '20px',
+            padding: '40px',
             backgroundColor: 'white',
             fontFamily: 'serif',
             fontSize: '11px',
             lineHeight: '1.6',
             border: '1px solid #ddd',
             boxSizing: 'border-box',
-            overflowY: 'auto',
-            maxHeight: '600px',
-            transform: 'scale(0.7)',
-            transformOrigin: 'top left',
-            width: 'calc(100% / 0.7)',
           }}
         >
           <TemplateComponent studentName={studentName || '[Enter name above]'} sampleCourses={sampleCourses} />
