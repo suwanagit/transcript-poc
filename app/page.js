@@ -40,50 +40,47 @@ export default function Home() {
     { code: 'HIST101', name: 'World History', semester: 'Spring 2023', grade: 'A', credits: 3 },
   ];
 
-const generatePDF = async () => {
-  if (!studentName.trim()) {
-    alert('Please enter a student name');
-    return;
-  }
+  const generatePDF = async () => {
+    if (!studentName.trim()) {
+      alert('Please enter a student name');
+      return;
+    }
 
-  if (!isReady || !window.html2pdf) {
-    alert('PDF library is still loading. Please try again in a moment.');
-    return;
-  }
+    if (!isReady || !window.html2pdf) {
+      alert('PDF library is still loading. Please try again in a moment.');
+      return;
+    }
 
-  setIsLoading(true);
-  try {
-    // Wait a moment for DOM to fully render
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const element = transcriptRef.current;
-    
-    // Determine orientation based on selected template
-    const isLandscape = selectedTemplate.includes('landscape');
-    const orientation = isLandscape ? 'landscape' : 'portrait';
-    
-    const opt = {
-      margin: 10,
-      filename: `${studentName}-transcript.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        logging: false, 
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        allowTaint: true,
-      },
-      jsPDF: { orientation: orientation, unit: 'mm', format: 'a4' },
-    };
-    
-    await window.html2pdf().set(opt).from(element).save();
-  } catch (error) {
-    console.error('PDF generation failed:', error);
-    alert('Failed to generate PDF. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    try {
+      const element = transcriptRef.current;
+      
+      // Determine orientation based on selected template
+      const isLandscape = selectedTemplate.includes('landscape');
+      const orientation = isLandscape ? 'landscape' : 'portrait';
+      
+      const opt = {
+        margin: 10,
+        filename: `${studentName}-transcript.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          logging: false, 
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          allowTaint: true,
+        },
+        jsPDF: { orientation: orientation, unit: 'mm', format: 'a4' },
+      };
+      
+      await window.html2pdf().set(opt).from(element).save();
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Get the selected template component
   const TemplateComponent = TEMPLATES[selectedTemplate].component;
@@ -153,8 +150,17 @@ const generatePDF = async () => {
         {!isReady ? 'Loading PDF library...' : isLoading ? 'Generating PDF...' : 'Download Transcript PDF'}
       </button>
 
-      {/* Hidden transcript template for PDF generation */}
-      <div ref={transcriptRef} style={{ display: 'none' }}>
+      {/* Transcript template for PDF generation - use visibility hidden instead of display none */}
+      <div 
+        ref={transcriptRef} 
+        style={{ 
+          visibility: 'hidden', 
+          position: 'absolute',
+          left: '-9999px',
+          width: '210mm',
+          pointerEvents: 'none',
+        }}
+      >
         <TemplateComponent studentName={studentName} sampleCourses={sampleCourses} />
       </div>
 
