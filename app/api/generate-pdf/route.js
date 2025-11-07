@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const config = {
-  runtime: 'nodejs',
-};
+export const runtime = 'nodejs';
 
 export async function POST(request) {
   try {
@@ -15,7 +13,7 @@ export async function POST(request) {
       );
     }
 
-    // Dynamic import for puppeteer - only on serverless
+    // Dynamic import for puppeteer
     const puppeteer = await import('puppeteer').then(mod => mod.default);
 
     const browser = await puppeteer.launch({
