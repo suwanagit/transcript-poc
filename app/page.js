@@ -5,31 +5,6 @@ import { useState, useRef, useEffect } from 'react';
 export default function Home() {
   const [studentName, setStudentName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const transcriptRef = useRef(null);
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    // Load html2pdf from CDN
-    const loadScript = () => {
-      if (typeof window !== 'undefined' && window.html2pdf) {
-        setIsReady(true);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.async = true;
-      script.onload = () => {
-        setTimeout(() => setIsReady(true), 100);
-      };
-      script.onerror = () => {
-        console.error('Failed to load html2pdf library');
-      };
-      document.head.appendChild(script);
-    };
-
-    loadScript();
-  }, []);
 
   const sampleCourses = [
     { code: 'MATH101', name: 'Calculus I', semester: 'Fall 2022', grade: 'A', credits: 4 },
@@ -44,41 +19,77 @@ export default function Home() {
       return;
     }
 
-    if (!isReady || !window.html2pdf) {
-      alert('PDF library is still loading. Please try again in a moment.');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const element = transcriptRef.current;
-      
-      // Make visible temporarily
-      element.style.opacity = '1';
-      element.style.visibility = 'visible';
-      element.style.position = 'fixed';
-      element.style.top = '0';
-      element.style.left = '0';
-      element.style.zIndex = '-9999';
-      
-      const opt = {
-        margin: 10,
-        filename: `${studentName}-transcript.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
-      };
-      
-      await window.html2pdf().set(opt).from(element).save();
-      
-      // Hide again
-      element.style.opacity = '0';
-      element.style.visibility = 'hidden';
-      element.style.position = 'absolute';
-      element.style.top = 'auto';
-      element.style.left = 'auto';
-      element.style.zIndex = 'auto';
-      
+      const transcriptHTML = `
+        <div style="width: 210mm; padding: 40px; background-color: white; font-family: serif; font-size: 12px; line-height: 1.6;">
+          <div style="text-align: center; margin-bottom: 40px;">
+            <h2 style="margin: 0 0 5px 0; font-size: 18px;">Official Academic Transcript</h2>
+            <p style="margin: 0; color: #666;">State University</p>
+          </div>
+
+          <div style="margin-bottom: 30px; border-bottom: 1px solid #000; padding-bottom: 15px;">
+            <p style="margin: 5px 0;"><strong>Student Name:</strong> ${studentName}</p>
+            <p style="margin: 5px 0;"><strong>Student ID:</strong> 123456789</p>
+            <p style="margin: 5px 0;"><strong>Issue Date:</strong> ${new Date().toLocaleDateString()}</p>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 14px; margin-bottom: 15px;">Course History</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <thead>
+                <tr style="border-bottom: 2px solid #000;">
+                  <th style="text-align: left; padding: 8px; font-weight: bold;">Course Code</th>
+                  <th style="text-align: left; padding: 8px; font-weight: bold;">Course Name</th>
+                  <th style="text-align: center; padding: 8px; font-weight: bold;">Semester</th>
+                  <th style="text-align: center; padding: 8px; font-weight: bold;">Grade</th>
+                  <th style="text-align: center; padding: 8px; font-weight: bold;">Credits</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sampleCourses.map(course => `
+                  <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 8px;">${course.code}</td>
+                    <td style="padding: 8px;">${course.name}</td>
+                    <td style="text-align: center; padding: 8px;">${course.semester}</td>
+                    <td style="text-align: center; padding: 8px; font-weight: bold;">${course.grade}</td>
+                    <td style="text-align: center; padding: 8px;">${course.credits}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="border-top: 2px solid #000; padding-top: 15px; text-align: center; color: #666; font-size: 10px;">
+            <p>This is an official academic record. Unauthorized reproduction is prohibited.</p>
+          </div>
+        </div>
+      `;
+
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          html: transcriptHTML,
+          filename: `${studentName}-transcript.pdf`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${studentName}-transcript.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -113,91 +124,21 @@ export default function Home() {
 
       <button
         onClick={generatePDF}
-        disabled={isLoading || !isReady}
+        disabled={isLoading}
         style={{
           padding: '12px 24px',
           fontSize: '16px',
-          backgroundColor: isReady ? '#0066cc' : '#ccc',
+          backgroundColor: '#0066cc',
           color: 'white',
           border: 'none',
           borderRadius: '4px',
-          cursor: isLoading || !isReady ? 'not-allowed' : 'pointer',
+          cursor: isLoading ? 'not-allowed' : 'pointer',
           opacity: isLoading ? 0.6 : 1,
           marginBottom: '40px',
         }}
       >
-        {!isReady ? 'Loading PDF library...' : isLoading ? 'Generating PDF...' : 'Download Transcript PDF'}
+        {isLoading ? 'Generating PDF...' : 'Download Transcript PDF'}
       </button>
-
-      {/* Transcript template - initially hidden with opacity */}
-      <div
-        ref={transcriptRef}
-        style={{
-          opacity: '0',
-          visibility: 'hidden',
-          position: 'absolute',
-          width: '210mm',
-          backgroundColor: 'white',
-        }}
-      >
-        <div
-          style={{
-            width: '210mm',
-            padding: '40px',
-            backgroundColor: 'white',
-            fontFamily: 'serif',
-            fontSize: '12px',
-            lineHeight: '1.6',
-          }}
-        >
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <h2 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>Official Academic Transcript</h2>
-            <p style={{ margin: '0', color: '#666' }}>State University</p>
-          </div>
-
-          <div style={{ marginBottom: '30px', borderBottom: '1px solid #000', paddingBottom: '15px' }}>
-            <p style={{ margin: '5px 0' }}>
-              <strong>Student Name:</strong> {studentName}
-            </p>
-            <p style={{ margin: '5px 0' }}>
-              <strong>Student ID:</strong> 123456789
-            </p>
-            <p style={{ margin: '5px 0' }}>
-              <strong>Issue Date:</strong> {new Date().toLocaleDateString()}
-            </p>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '14px', marginBottom: '15px' }}>Course History</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #000' }}>
-                  <th style={{ textAlign: 'left', padding: '8px', fontWeight: 'bold' }}>Course Code</th>
-                  <th style={{ textAlign: 'left', padding: '8px', fontWeight: 'bold' }}>Course Name</th>
-                  <th style={{ textAlign: 'center', padding: '8px', fontWeight: 'bold' }}>Semester</th>
-                  <th style={{ textAlign: 'center', padding: '8px', fontWeight: 'bold' }}>Grade</th>
-                  <th style={{ textAlign: 'center', padding: '8px', fontWeight: 'bold' }}>Credits</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sampleCourses.map((course, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-                    <td style={{ padding: '8px' }}>{course.code}</td>
-                    <td style={{ padding: '8px' }}>{course.name}</td>
-                    <td style={{ textAlign: 'center', padding: '8px' }}>{course.semester}</td>
-                    <td style={{ textAlign: 'center', padding: '8px', fontWeight: 'bold' }}>{course.grade}</td>
-                    <td style={{ textAlign: 'center', padding: '8px' }}>{course.credits}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ borderTop: '2px solid #000', paddingTop: '15px', textAlign: 'center', color: '#666', fontSize: '10px' }}>
-            <p>This is an official academic record. Unauthorized reproduction is prohibited.</p>
-          </div>
-        </div>
-      </div>
 
       {/* Live preview of transcript */}
       <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
